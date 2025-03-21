@@ -1,0 +1,52 @@
+{
+  "name": "antnet",
+  "version": "0.1.0",
+  "description": "A multiplayer game based on ant colony optimization",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon server/index.js",
+    "client": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/antnet.git"
+  },
+  "keywords": [
+    "game",
+    "ant-colony",
+    "optimization",
+    "three.js",
+    "webgl"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.17.3",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "socket.io": "^4.4.1",
+    "socket.io-client": "^4.4.1",
+    "three": "^0.139.2",
+    "uuid": "^8.3.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.17.8",
+    "@babel/preset-env": "^7.16.11",
+    "@babel/preset-react": "^7.16.7",
+    "babel-loader": "^8.2.4",
+    "concurrently": "^7.1.0",
+    "css-loader": "^6.7.1",
+    "file-loader": "^6.2.0",
+    "html-webpack-plugin": "^5.5.0",
+    "jest": "^27.5.1",
+    "nodemon": "^2.0.15",
+    "style-loader": "^3.3.1",
+    "webpack": "^5.71.0",
+    "webpack-cli": "^4.9.2",
+    "webpack-dev-server": "^4.7.4"
+  }
+}

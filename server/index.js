@@ -215,7 +215,6 @@ process.on('SIGINT', () => {
 });
 
 // At the top of your file, with other requires
-const path = require('path');
 
 // Inside your server setup code
 // Serve static files from dist directory in production

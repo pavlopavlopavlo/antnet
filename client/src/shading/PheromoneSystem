@@ -1,0 +1,293 @@
+/**
+ * Handles rendering of pheromone trails using custom shaders
+ * Creates the glowing, animated effect described in the roadmap
+ */
+export default class PheromoneSystem {
+  /**
+   * Create the pheromone rendering system
+   * @param {THREE.Scene} scene - Three.js scene to add renderers to
+   */
+  constructor(scene) {
+    this.scene = scene;
+    
+    // Pheromone material with custom shaders
+    this.pheromoneShader = {
+      uniforms: {
+        time: { value: 0 },
+        opacity: { value: 1.0 }
+      },
+      vertexShader: null,
+      fragmentShader: null
+    };
+    
+    // Load the shaders
+    this.loadShaders();
+    
+    // Initialize containers
+    this.pheromoneGroups = {}; // Grouped by type
+    
+    // Particle system properties
+    this.particleSize = 1.5;
+    this.segmentsPerEdge = 10; // Number of particles per edge
+  }
+  
+  /**
+   * Load shader source files
+   */
+  async loadShaders() {
+    try {
+      // In a real implementation, you would use a loader to get these from files
+      // For GitHub, these would be imported from the shader files
+      this.pheromoneShader.vertexShader = `
+        uniform float time;
+        attribute float width;
+        attribute vec3 color;
+        
+        varying vec3 vColor;
+        varying float vAlpha;
+        
+        void main() {
+          vColor = color;
+          
+          // Calculate alpha based on position along the line
+          float linePosition = position.y;
+          vAlpha = sin(linePosition * 3.14159);
+          
+          // Add time-based animation
+          vAlpha *= 0.7 + 0.3 * sin(time * 2.0 + linePosition * 10.0);
+          
+          // Calculate the normal - assume it's a line strip along z-axis
+          vec4 worldPosition = modelViewMatrix * vec4(position, 1.0);
+          
+          // Set the final position
+          gl_Position = projectionMatrix * worldPosition;
+          
+          // Set the point size based on width and distance
+          gl_PointSize = width * (1.0 / -worldPosition.z) * 100.0;
+        }
+      `;
+      
+      this.pheromoneShader.fragmentShader = `
+        varying vec3 vColor;
+        varying float vAlpha;
+        
+        void main() {
+          // Calculate distance from center of point (for rounded points)
+          vec2 center = gl_PointCoord - 0.5;
+          float dist = length(center);
+          
+          // Discard pixels outside of circle
+          if (dist > 0.5) {
+            discard;
+          }
+          
+          // Calculate glow effect
+          float glow = 1.0 - (dist * 2.0);
+          glow = pow(glow, 1.5);
+          
+          // Set final color with glow and alpha
+          gl_FragColor = vec4(vColor, vAlpha * glow);
+        }
+      `;
+      
+      // Initialize the pheromone materials now that we have the shaders
+      this.initializeMaterials();
+    } catch (error) {
+      console.error('Error loading shaders:', error);
+    }
+  }
+  
+  /**
+   * Initialize pheromone materials with custom shaders
+   */
+  initializeMaterials() {
+    // Create materials for different pheromone types
+    this.pheromoneMaterials = {
+      'FOOD': new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0 },
+          opacity: { value: 1.0 }
+        },
+        vertexShader: this.pheromoneShader.vertexShader,
+        fragmentShader: this.pheromoneShader.fragmentShader,
+        blending: THREE.AdditiveBlending,
+        depthTest: false,
+        transparent: true
+      }),
+      'EXPLORATION': new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0 },
+          opacity: { value: 1.0 }
+        },
+        vertexShader: this.pheromoneShader.vertexShader,
+        fragmentShader: this.pheromoneShader.fragmentShader,
+        blending: THREE.AdditiveBlending,
+        depthTest: false,
+        transparent: true
+      })
+    };
+  }
+  
+  /**
+   * Update the pheromone system with new data
+   * @param {Array} pheromoneData - Array of pheromone objects from AntColony
+   * @param {number} deltaTime - Time since last update
+   */
+  update(pheromoneData, deltaTime) {
+    // Update shader time uniform
+    for (const type in this.pheromoneMaterials) {
+      this.pheromoneMaterials[type].uniforms.time.value += deltaTime;
+    }
+    
+    // Clear existing pheromone renderers
+    this.clearPheromones();
+    
+    // Group pheromones by type
+    const pheromonesByType = {};
+    
+    for (const pheromone of pheromoneData) {
+      if (!pheromonesByType[pheromone.type]) {
+        pheromonesByType[pheromone.type] = [];
+      }
+      pheromonesByType[pheromone.type].push(pheromone);
+    }
+    
+    // Create new renderers for each type
+    for (const type in pheromonesByType) {
+      this.createPheromoneRenderer(type, pheromonesByType[type]);
+    }
+  }
+  
+  /**
+   * Clear all pheromone objects from the scene
+   */
+  clearPheromones() {
+    for (const type in this.pheromoneGroups) {
+      if (this.pheromoneGroups[type]) {
+        this.scene.remove(this.pheromoneGroups[type]);
+        if (this.pheromoneGroups[type].geometry) {
+          this.pheromoneGroups[type].geometry.dispose();
+        }
+      }
+    }
+    
+    this.pheromoneGroups = {};
+  }
+  
+  /**
+   * Create a renderer for a specific pheromone type
+   * @param {string} type - Pheromone type
+   * @param {Array} pheromones - Array of pheromones of this type
+   */
+  createPheromoneRenderer(type, pheromones) {
+    // Get material for this type (or use default)
+    const material = this.pheromoneMaterials[type] || this.pheromoneMaterials['EXPLORATION'];
+    
+    // Create geometry for all pheromones of this type
+    const pointsGeometry = new THREE.BufferGeometry();
+    
+    // Calculate total number of points
+    const totalPoints = pheromones.length * this.segmentsPerEdge;
+    
+    // Create arrays for attributes
+    const positions = new Float32Array(totalPoints * 3); // x, y, z
+    const colors = new Float32Array(totalPoints * 3); // r, g, b
+    const widths = new Float32Array(totalPoints); // width of each point
+    
+    let pointIndex = 0;
+    
+    // Generate points along each pheromone trail
+    for (const pheromone of pheromones) {
+      const { from, to, level, color } = pheromone;
+      
+      // Skip invalid pheromones
+      if (!from || !to) continue;
+      
+      // Calculate direction vector
+      const direction = new THREE.Vector3().subVectors(to, from);
+      const segmentLength = direction.length() / this.segmentsPerEdge;
+      direction.normalize();
+      
+      // Create points along the edge
+      for (let i = 0; i < this.segmentsPerEdge; i++) {
+        // Calculate position along the edge
+        const t = i / (this.segmentsPerEdge - 1);
+        const position = new THREE.Vector3().lerpVectors(from, to, t);
+        
+        // Add some noise to make it look more organic
+        const noiseAmount = 0.05 * segmentLength;
+        position.x += (Math.random() - 0.5) * noiseAmount;
+        position.y += (Math.random() - 0.5) * noiseAmount;
+        position.z += (Math.random() - 0.5) * noiseAmount;
+        
+        // Set position
+        positions[pointIndex * 3] = position.x;
+        positions[pointIndex * 3 + 1] = position.y;
+        positions[pointIndex * 3 + 2] = position.z;
+        
+        // Set color
+        colors[pointIndex * 3] = color.r;
+        colors[pointIndex * 3 + 1] = color.g;
+        colors[pointIndex * 3 + 2] = color.b;
+        
+        // Set width based on pheromone level and position along edge
+        // Edge points are thinner to create a tapered effect
+        const edgeFactor = Math.sin(t * Math.PI);
+        widths[pointIndex] = this.particleSize * level * edgeFactor;
+        
+        pointIndex++;
+      }
+    }
+    
+    // Set attributes
+    pointsGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    pointsGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    pointsGeometry.setAttribute('width', new THREE.BufferAttribute(widths, 1));
+    
+    // Create points system
+    const points = new THREE.Points(pointsGeometry, material);
+    
+    // Add to scene and store for later
+    this.scene.add(points);
+    this.pheromoneGroups[type] = points;
+  }
+  
+  /**
+   * Adjust the opacity of pheromones
+   * @param {number} opacity - Opacity value (0-1)
+   */
+  setOpacity(opacity) {
+    for (const type in this.pheromoneMaterials) {
+      this.pheromoneMaterials[type].uniforms.opacity.value = opacity;
+    }
+  }
+  
+  /**
+   * Adjust particle size to control trail thickness
+   * @param {number} size - Particle size multiplier
+   */
+  setParticleSize(size) {
+    this.particleSize = size;
+  }
+  
+  /**
+   * Set the number of segments per edge (detail level)
+   * @param {number} segments - Number of particles per edge
+   */
+  setSegmentsPerEdge(segments) {
+    this.segmentsPerEdge = segments;
+  }
+  
+  /**
+   * Dispose of all resources
+   */
+  dispose() {
+    this.clearPheromones();
+    
+    for (const type in this.pheromoneMaterials) {
+      if (this.pheromoneMaterials[type]) {
+        this.pheromoneMaterials[type].dispose();
+      }
+    }
+  }
+}

@@ -213,3 +213,19 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
+
+// At the top of your file, with other requires
+const path = require('path');
+
+// Inside your server setup code
+// Serve static files from dist directory in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../dist')));
+  
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  });
+}
+
+// Update your port configuration
+const PORT = process.env.PORT || 5000;

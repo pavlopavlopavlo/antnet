@@ -9,7 +9,12 @@
     "server": "nodemon server/index.js",
     "client": "webpack serve --mode development",
     "build": "webpack --mode production",
-    "test": "jest"
+    "test": "jest",
+    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install && npm run build"
+  },
+  "engines": {
+    "node": "14.x",
+    "npm": "6.x"
   },
   "repository": {
     "type": "git",
@@ -31,7 +36,8 @@
     "socket.io": "^4.4.1",
     "socket.io-client": "^4.4.1",
     "three": "^0.139.2",
-    "uuid": "^8.3.2"
+    "uuid": "^8.3.2",
+    "path": "^0.12.7"
   },
   "devDependencies": {
     "@babel/core": "^7.17.8",
@@ -47,26 +53,7 @@
     "style-loader": "^3.3.1",
     "webpack": "^5.71.0",
     "webpack-cli": "^4.9.2",
-    "webpack-dev-server": "^4.7.4"
+    "webpack-dev-server": "^4.7.4",
+    "raw-loader": "^4.0.2"
   }
 }
-
-}
-{
-  "name": "antnet",
-  "version": "0.1.0",
-  "description": "A multiplayer game based on ant colony optimization",
-  "main": "server/index.js",
-  "scripts": {
-    "start": "node server/index.js",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "nodemon server/index.js",
-    "client": "webpack serve --mode development",
-    "build": "webpack --mode production",
-    "test": "jest",
-    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install && npm run build"
-  },
-  "engines": {
-    "node": "14.x",
-    "npm": "6.x"
-  },

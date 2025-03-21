@@ -50,6 +50,8 @@
     "webpack-dev-server": "^4.7.4"
   }
 }
+
+}
 {
   "name": "antnet",
   "version": "0.1.0",
@@ -69,4 +71,3 @@
     "npm": "6.x"
   },
   // Rest of your package.json remains the same
-}

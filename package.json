@@ -4,20 +4,21 @@
   "description": "A multiplayer game based on ant colony optimization",
   "main": "server/index.js",
   "scripts": {
-  "start": "node server/index.js",
-  "dev": "concurrently \"npm run server\" \"npm run client\"",
-  "server": "nodemon server/index.js",
-  "client": "webpack serve --mode development",
-  "build": "webpack --mode production",
-  "heroku-postbuild": "npm run build"
-},
+    "start": "node server/index.js",
+    "dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "nodemon server/index.js",
+    "client": "webpack serve --mode development",
+    "build": "webpack --mode production",
+    "test": "jest",
+    "heroku-postbuild": "npm run build"
+  },
   "engines": {
-    "node": ">=14.x",
-    "npm": ">=6.x"
+    "node": ">=14",
+    "npm": ">=6"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/antnet.git"
+    "url": "git+https://github.com/pavlopavlopavlo/antnet.git"
   },
   "keywords": [
     "game",

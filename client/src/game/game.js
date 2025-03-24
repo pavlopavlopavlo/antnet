@@ -59,10 +59,11 @@ class Game {
     console.log('Game initialized');
   }
   
-  async connectToServer() {
-    return new Promise((resolve) => {
-      // Connect to Socket.IO server
-      this.socket = io();
+  // In client/src/game/Game.js, update the socket connection:
+// Connect to Socket.IO server
+this.socket = process.env.NODE_ENV === 'production' 
+  ? io()
+  : io('http://localhost:5000');
       
       // Handle connection events
       this.socket.on('connect', () => {

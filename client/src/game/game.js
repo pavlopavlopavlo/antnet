@@ -12,7 +12,7 @@ import UI from '../ui/UI';
 class Game {
   constructor() {
     this.initialized = false;
-    this.socket = null;
+    this.socket = io();  // This should work in both environments with our server config;
     this.gameId = null;
     this.playerId = null;
     

@@ -1,9 +1,13 @@
 // client/src/game/Game.js
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
-import AntColony from './AntColony';
-import PheromoneSystem from '../rendering/PheromoneSystem';
 import io from 'socket.io-client';
+import AntColony from './AntColony';
+import Renderer from '../rendering/Renderer';
+import NodeRenderer from '../rendering/NodeRenderer';
+import AntRenderer from '../rendering/AntRenderer';
+import PheromoneSystem from '../rendering/PheromoneSystem';
+import UI from '../ui/UI';
 
 class Game {
   constructor() {
@@ -11,17 +15,6 @@ class Game {
     this.socket = null;
     this.gameId = null;
     this.playerId = null;
-    
-    // Three.js components
-    this.scene = null;
-    this.camera = null;
-    this.renderer = null;
-    this.controls = null;
-    
-    // Game components
-    this.graph = null;
-    this.antColony = null;
-    this.pheromoneSystem = null;
     
     // Game state
     this.lastUpdateTime = 0;
@@ -34,11 +27,27 @@ class Game {
   async init() {
     if (this.initialized) return;
     
-    // Set up Three.js scene
-    this.setupScene();
+    // Get container element
+    this.container = document.getElementById('game-container');
+    
+    // Remove loading message if exists
+    const loadingEl = this.container.querySelector('.loading');
+    if (loadingEl) {
+      this.container.removeChild(loadingEl);
+    }
+    
+    // Set up renderer
+    this.renderer = new Renderer(this.container);
+    this.scene = this.renderer.scene;
+    this.camera = this.renderer.camera;
+    
+    // Set up renderers for game elements
+    this.nodeRenderer = new NodeRenderer(this.scene);
+    this.antRenderer = new AntRenderer(this.scene);
+    this.pheromoneSystem = new PheromoneSystem(this.scene);
     
     // Set up UI
-    this.setupUI();
+    this.ui = new UI(this);
     
     // Connect to server
     await this.connectToServer();
@@ -47,73 +56,7 @@ class Game {
     this.start();
     
     this.initialized = true;
-  }
-  
-  setupScene() {
-    // Create scene
-    this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x111122);
-    
-    // Create camera
-    this.camera = new THREE.PerspectiveCamera(
-      75, window.innerWidth / window.innerHeight, 0.1, 1000
-    );
-    this.camera.position.set(0, 30, 30);
-    this.camera.lookAt(0, 0, 0);
-    
-    // Create renderer
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
-    document.getElementById('game-container').appendChild(this.renderer.domElement);
-    
-    // Add orbit controls
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enableDamping = true;
-    this.controls.dampingFactor = 0.05;
-    
-    // Add ambient light
-    const ambientLight = new THREE.AmbientLight(0x404040);
-    this.scene.add(ambientLight);
-    
-    // Add directional light
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
-    directionalLight.position.set(10, 20, 10);
-    this.scene.add(directionalLight);
-    
-    // Add resize handler
-    window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
-      this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-    
-    // Add test objects (temporary)
-    this.addTestObjects();
-  }
-  
-  addTestObjects() {
-    // Add grid helper
-    const gridHelper = new THREE.GridHelper(50, 50);
-    this.scene.add(gridHelper);
-    
-    // Add a sphere to represent the nest
-    const nestGeometry = new THREE.SphereGeometry(2, 32, 32);
-    const nestMaterial = new THREE.MeshStandardMaterial({ color: 0x00aaff });
-    const nestMesh = new THREE.Mesh(nestGeometry, nestMaterial);
-    this.scene.add(nestMesh);
-  }
-  
-  setupUI() {
-    // Create a simple UI for testing
-    const uiContainer = document.createElement('div');
-    uiContainer.style.position = 'absolute';
-    uiContainer.style.top = '10px';
-    uiContainer.style.left = '10px';
-    uiContainer.style.color = 'white';
-    uiContainer.style.fontFamily = 'Arial, sans-serif';
-    uiContainer.innerHTML = '<h3>AntNet</h3><div id="game-info">Connecting to server...</div>';
-    document.body.appendChild(uiContainer);
+    console.log('Game initialized');
   }
   
   async connectToServer() {
@@ -126,14 +69,15 @@ class Game {
         console.log('Connected to server');
         
         // Join or create a game
+        this.socket.emit('join_game', {
+// client/src/game/Game.js (continued)
         this.socket.emit('join_game', { playerName: 'Player' }, (response) => {
           if (response.success) {
             this.gameId = response.gameId;
             this.playerId = response.playerId;
             
             // Update UI
-            const gameInfo = document.getElementById('game-info');
-            gameInfo.textContent = `Game ID: ${this.gameId} | Player ID: ${this.playerId}`;
+            this.ui.updateGameInfo(response.game);
             
             // Initialize game with received data
             this.initializeGameState(response.game);
@@ -141,6 +85,7 @@ class Game {
             resolve();
           } else {
             console.error('Failed to join game:', response.error);
+            this.ui.showMessage('Failed to connect to game server');
           }
         });
       });
@@ -153,39 +98,80 @@ class Game {
       // Handle player joins
       this.socket.on('player_joined', (data) => {
         console.log(`Player joined: ${data.playerName}`);
+        this.ui.showMessage(`Player ${data.playerName} joined`);
       });
       
       // Handle player leaves
       this.socket.on('player_left', (data) => {
         console.log(`Player left: ${data.playerId}`);
+        this.ui.showMessage(`Player left`);
       });
       
       // Handle disconnection
       this.socket.on('disconnect', () => {
         console.log('Disconnected from server');
+        this.ui.showMessage('Disconnected from server', 5000);
       });
     });
   }
   
   initializeGameState(gameState) {
-    // Create ant colony with initial state
-    this.antColony = new AntColony(gameState.graph);
+    if (!gameState) return;
     
-    // Create pheromone system
-    this.pheromoneSystem = new PheromoneSystem(this.scene);
+    console.log('Initializing game state:', gameState);
     
-    // TODO: Create node renderers
-    // TODO: Create ant renderers
+    // Update node renderer
+    if (gameState.nodes) {
+      this.nodeRenderer.update(gameState.nodes);
+    }
+    
+    // Update pheromone system
+    if (gameState.pheromones) {
+      this.pheromoneSystem.update(gameState.pheromones, 0);
+    }
+    
+    // Create ant colony if it doesn't exist
+    if (!this.antColony) {
+      this.antColony = new AntColony({ nestId: this.findNestNodeId(gameState.nodes) });
+    }
+    
+    // Update UI
+    this.ui.updateGameInfo(gameState);
   }
   
   updateGameState(gameState) {
-    // Update pheromones
+    if (!gameState) return;
+    
+    // Update node renderer
+    if (gameState.nodes) {
+      this.nodeRenderer.update(gameState.nodes);
+    }
+    
+    // Update pheromone system
     if (gameState.pheromones) {
       this.pheromoneSystem.update(gameState.pheromones, 0.016);
     }
     
-    // TODO: Update nodes
-    // TODO: Update ants
+    // Update ant renderer if we have ant data
+    if (this.antColony && this.antColony.getAntRenderData) {
+      const antData = this.antColony.getAntRenderData();
+      this.antRenderer.update(antData);
+    }
+    
+    // Update UI
+    this.ui.updateGameInfo(gameState);
+  }
+  
+  findNestNodeId(nodes) {
+    if (!nodes) return null;
+    
+    for (const nodeId in nodes) {
+      if (nodes[nodeId].type === 'NEST') {
+        return nodeId;
+      }
+    }
+    
+    return null;
   }
   
   start() {
@@ -205,16 +191,78 @@ class Game {
     const deltaTime = (currentTime - this.lastUpdateTime) / 1000;
     this.lastUpdateTime = currentTime;
     
-    // Update controls
-    this.controls.update();
+    // Update renderer
+    this.renderer.render(deltaTime);
     
-    // Update game components
-    if (this.antColony) {
+    // Update node animations
+    this.nodeRenderer.updateAnimations(deltaTime);
+    
+    // Update ant colony if it exists
+    if (this.antColony && this.antColony.update) {
       this.antColony.update(deltaTime);
+      
+      // Update ant renderer with new ant data
+      if (this.antColony.getAntRenderData) {
+        const antData = this.antColony.getAntRenderData();
+        this.antRenderer.update(antData);
+      }
     }
+  }
+  
+  // Player actions
+  
+  /**
+   * Place pheromone between two nodes
+   * @param {string} fromNodeId - Source node ID
+   * @param {string} toNodeId - Destination node ID
+   * @param {string} type - Pheromone type
+   * @param {number} amount - Amount to place
+   */
+  placePheromone(fromNodeId, toNodeId, type = 'EXPLORATION', amount = 1.0) {
+    if (!this.socket) return;
     
-    // Render scene
-    this.renderer.render(this.scene, this.camera);
+    this.socket.emit('place_pheromone', {
+      fromNodeId,
+      toNodeId,
+      type,
+      amount
+    });
+  }
+  
+  /**
+   * Boost a node
+   * @param {string} nodeId - Node ID to boost
+   */
+  boostNode(nodeId) {
+    if (!this.socket) return;
+    
+    this.socket.emit('boost_node', {
+      nodeId
+    });
+  }
+  
+  /**
+   * Disrupt a node
+   * @param {string} nodeId - Node ID to disrupt
+   */
+  disruptNode(nodeId) {
+    if (!this.socket) return;
+    
+    this.socket.emit('disrupt_node', {
+      nodeId
+    });
+  }
+  
+  /**
+   * Expand a node
+   * @param {string} nodeId - Node ID to expand
+   */
+  expandNode(nodeId) {
+    if (!this.socket) return;
+    
+    this.socket.emit('expand_node', {
+      nodeId
+    });
   }
 }
 

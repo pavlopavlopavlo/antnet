@@ -13,10 +13,13 @@ const GameManager = require('./game');
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
+  // In server/index.js
+const io = socketIO(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST']
+    origin: process.env.NODE_ENV === 'production' ? false : "http://localhost:3000",
+    methods: ["GET", "POST"]
   }
+});
 });
 
 // Add to your server/index.js file

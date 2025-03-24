@@ -13,38 +13,28 @@ const GameManager = require('./game');
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
-  // In server/index.js
-const io = socketIO(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' ? false : "http://localhost:3000",
-    methods: ["GET", "POST"]
+    origin: process.env.NODE_ENV === 'production' ? '*' : 'http://localhost:3000',
+    methods: ['GET', 'POST']
   }
 });
-});
 
-// Add to your server/index.js file
-const path = require('path');
-
-// After setting up your Express app, add:
+// Configure static file serving - THIS IS CRITICAL FOR HEROKU
 if (process.env.NODE_ENV === 'production') {
-  // Serve static files from the React app
+  // Serve static files from dist directory
   app.use(express.static(path.join(__dirname, '../dist')));
   
   // The "catchall" handler: for any request that doesn't
-  // match one above, send back React's index.html file.
+  // match one above, send back the index.html file
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 }
 
-// Serve static files from dist directory in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-  });
-}
+// Add a simple health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'AntNet server is running' });
+});
 
 // Game rooms storage
 const games = new Map();
@@ -231,18 +221,3 @@ process.on('SIGINT', () => {
     process.exit(0);
   });
 });
-
-// At the top of your file, with other requires
-
-// Inside your server setup code
-// Serve static files from dist directory in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-  });
-}
-
-// Update your port configuration
-const PORT = process.env.PORT || 5000;

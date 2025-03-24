@@ -1,0 +1,75 @@
+/* Base styles for AntNet */
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: #111;
+  color: #fff;
+  font-family: Arial, sans-serif;
+}
+
+#game-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.ui-container {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 15px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 5px;
+  z-index: 100;
+  max-width: 250px;
+}
+
+.controls {
+  margin-top: 10px;
+}
+
+button {
+  background-color: #2a3b90;
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  margin: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+button:hover {
+  background-color: #3a4bb0;
+}
+
+.node-info {
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.energy-display {
+  margin-top: 15px;
+}
+
+.energy-bar {
+  height: 10px;
+  background-color: rgba(255, 255, 255, 0.2);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.energy-fill {
+  height: 100%;
+  background-color: #00aaff;
+  transition: width 0.3s;
+}
+
+.message {
+  transition: opacity 0.3s;
+}

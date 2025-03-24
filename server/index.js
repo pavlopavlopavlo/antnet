@@ -19,6 +19,21 @@ const io = socketIO(server, {
   }
 });
 
+// Add to your server/index.js file
+const path = require('path');
+
+// After setting up your Express app, add:
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the React app
+  app.use(express.static(path.join(__dirname, '../dist')));
+  
+  // The "catchall" handler: for any request that doesn't
+  // match one above, send back React's index.html file.
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../dist/index.html'));
+  });
+}
+
 // Serve static files from dist directory in production
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));

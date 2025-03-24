@@ -30,11 +30,48 @@
       text-align: center;
       font-size: 24px;
     }
+    
+    .ui-container {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 15px;
+      background-color: rgba(0, 0, 0, 0.5);
+      border-radius: 5px;
+      z-index: 100;
+    }
+    
+    .controls {
+      margin-top: 10px;
+    }
+    
+    button {
+      background-color: #2a3b90;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      margin: 5px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background-color: #3a4bb0;
+    }
   </style>
 </head>
 <body>
   <div id="game-container">
     <div class="loading">Loading AntNet...</div>
+  </div>
+  <div class="ui-container">
+    <h2>AntNet</h2>
+    <div id="game-info">Connecting...</div>
+    <div class="controls">
+      <button id="boost-btn">Boost Node</button>
+      <button id="disrupt-btn">Disrupt Node</button>
+      <button id="expand-btn">Expand Node</button>
+    </div>
   </div>
   <!-- Scripts will be injected by webpack -->
 </body>

@@ -35,7 +35,8 @@ module.exports = (env, argv) => {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        template: './client/public/index.html'
+        template: './client/public/index.html',
+        favicon: './client/public/favicon.ico'
       })
     ],
     devServer: {
